@@ -1,51 +1,64 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using learndotnet.Models;
+using learndotnet.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using Producerr;
 
 namespace learndotnet.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
+    public class WeatherForecastController : Controller
     {
-        private static readonly string[] Summaries = new[]
-        {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
 
         private readonly ILogger<WeatherForecastController> _logger;
+        private readonly ShipwreckService _shipwreckService;
+        private readonly producerTest1 _producertTest1;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger)
+
+
+        public WeatherForecastController(IDatabaseSettings settings)
         {
-            _logger = logger;
+            _shipwreckService = new ShipwreckService(settings);
+            _producertTest1 = new producerTest1();
         }
 
         [HttpGet]
-        public IEnumerable<WeatherForecast> Get()
+        public Task<Shipwreck> Get()
         {
-            var rng = new Random();
-            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+            var result = _shipwreckService.GetData();
+            return result;
+        }
+
+
+
+        [HttpPost]
+        public ActionResult<SubmissionModel> Create(SubmissionModel submission)
+        {
+            submission.Created = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneConverter.TZConvert.GetTimeZoneInfo("SE Asia Standard Time"));
+            var result = new SubmissionModel();
+            if (ModelState.IsValid)
             {
-                Date = DateTime.Now.AddDays(index),
-                TemperatureC = rng.Next(-20, 55),
-                Summary = Summaries[rng.Next(Summaries.Length)]
-            })
-            .ToArray();
+                result = _shipwreckService.Create(submission);
+
+            }
+            return result;
         }
 
         [HttpPost]
-        
-        async public Task<WeatherForecast> Create()
+        [Route("sendProducer/{msg}")]
+        public ActionResult<string> SendProducer (string msg)
         {
-            var result = new WeatherForecast { 
-                         Date = DateTime.Now.AddDays(1),
-                         TemperatureC = 22,
-                         Summary = "Winter"
-                        };
-            return result;
+            var producer = _producertTest1.PublishAsync(msg);
+            return producer.Result;
         }
     }
 }
